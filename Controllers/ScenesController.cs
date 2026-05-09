@@ -8,7 +8,7 @@ using System.Security.Claims;
 namespace SceneBuilderApi.Controllers;
 
 [ApiController]
-[Route("api/scenes")]
+[Route("api/stories/{storyId}/scenes")]
 [Authorize]
 public class ScenesController(AppDbContext context) : ControllerBase
 {
@@ -17,75 +17,90 @@ public class ScenesController(AppDbContext context) : ControllerBase
         ?? User.FindFirst("sub")?.Value
         ?? throw new UnauthorizedAccessException("User ID not found in token");
 
+    private async Task<bool> StoryBelongsToUser(int storyId, string userId) =>
+        await context.Stories.AnyAsync(s => s.Id == storyId && s.UserId == userId);
+
     [HttpGet]
-    public async Task<IActionResult> GetScenes()
+    public async Task<IActionResult> GetScenes(int storyId)
     {
         var userId = GetClerkUserId();
+        if (!await StoryBelongsToUser(storyId, userId)) return NotFound();
+
         var scenes = await context.Scenes
-            .Where(s => s.UserId == userId)
+            .Where(s => s.StoryId == storyId)
             .OrderBy(s => s.DisplayOrder)
-            .Select(s => new SceneSummary
-            {
-                Id = s.Id,
-                Title = s.Title,
-                DisplayOrder = s.DisplayOrder,
-                CreatedAt = s.CreatedAt,
-                UpdatedAt = s.UpdatedAt
-            })
+            .Select(s => new SceneSummary { Id = s.Id, Title = s.Title, DisplayOrder = s.DisplayOrder, CreatedAt = s.CreatedAt, UpdatedAt = s.UpdatedAt })
             .ToListAsync();
         return Ok(scenes);
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetScene(int id)
+    public async Task<IActionResult> GetScene(int storyId, int id)
     {
         var userId = GetClerkUserId();
-        var scene = await context.Scenes
-            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        if (!await StoryBelongsToUser(storyId, userId)) return NotFound();
+
+        var scene = await context.Scenes.FirstOrDefaultAsync(s => s.Id == id && s.StoryId == storyId);
         if (scene == null) return NotFound();
         return Ok(ToFull(scene));
     }
 
     [HttpPost]
-    public async Task<IActionResult> SaveScene([FromBody] SaveSceneRequest request)
+    public async Task<IActionResult> SaveScene(int storyId, [FromBody] SaveSceneRequest request)
     {
         var userId = GetClerkUserId();
+        if (!await StoryBelongsToUser(storyId, userId)) return NotFound();
+
         var nextOrder = (await context.Scenes
-            .Where(s => s.UserId == userId)
+            .Where(s => s.StoryId == storyId)
             .MaxAsync(s => (int?)s.DisplayOrder) ?? 0) + 1;
 
         var scene = new Scene
         {
+            StoryId = storyId,
             Title = request.Title,
             Content = request.Content,
-            UserId = userId,
             DisplayOrder = nextOrder,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
         context.Scenes.Add(scene);
+
+        await context.Stories
+            .Where(s => s.Id == storyId)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
+
         await context.SaveChangesAsync();
         return Ok(ToFull(scene));
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateScene(int id, [FromBody] UpdateSceneRequest request)
+    public async Task<IActionResult> UpdateScene(int storyId, int id, [FromBody] UpdateSceneRequest request)
     {
         var userId = GetClerkUserId();
-        var scene = await context.Scenes.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        if (!await StoryBelongsToUser(storyId, userId)) return NotFound();
+
+        var scene = await context.Scenes.FirstOrDefaultAsync(s => s.Id == id && s.StoryId == storyId);
         if (scene == null) return NotFound();
         scene.Title = request.Title;
         scene.Content = request.Content;
         scene.UpdatedAt = DateTime.UtcNow;
+
+        await context.Stories
+            .Where(s => s.Id == storyId)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
+
         await context.SaveChangesAsync();
         return Ok(ToFull(scene));
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteScene(int id)
+    public async Task<IActionResult> DeleteScene(int storyId, int id)
     {
         var userId = GetClerkUserId();
-        var scene = await context.Scenes.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        if (!await StoryBelongsToUser(storyId, userId)) return NotFound();
+
+        var scene = await context.Scenes.FirstOrDefaultAsync(s => s.Id == id && s.StoryId == storyId);
         if (scene == null) return NotFound();
         context.Scenes.Remove(scene);
         await context.SaveChangesAsync();
@@ -93,10 +108,12 @@ public class ScenesController(AppDbContext context) : ControllerBase
     }
 
     [HttpPut("reorder")]
-    public async Task<IActionResult> ReorderScenes([FromBody] ReorderRequest request)
+    public async Task<IActionResult> ReorderScenes(int storyId, [FromBody] ReorderRequest request)
     {
         var userId = GetClerkUserId();
-        var scenes = await context.Scenes.Where(s => s.UserId == userId).ToListAsync();
+        if (!await StoryBelongsToUser(storyId, userId)) return NotFound();
+
+        var scenes = await context.Scenes.Where(s => s.StoryId == storyId).ToListAsync();
         for (int i = 0; i < request.OrderedIds.Length; i++)
         {
             var scene = scenes.FirstOrDefault(s => s.Id == request.OrderedIds[i]);

@@ -61,8 +61,35 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy =>
+        policy.RequireAuthenticatedUser()
+              .RequireAssertion(ctx =>
+              {
+                  var metadata = ctx.User.FindFirst("metadata")?.Value;
+                  if (metadata == null) return false;
+                  try
+                  {
+                      using var doc = System.Text.Json.JsonDocument.Parse(metadata);
+                      return doc.RootElement.TryGetProperty("role", out var role)
+                             && role.GetString() == "admin";
+                  }
+                  catch { return false; }
+              }));
+});
+
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Clerk API client — used by AdminController to sync roles to publicMetadata
+var clerkSecretKey = builder.Configuration["Clerk:SecretKey"]
+    ?? throw new InvalidOperationException("Clerk:SecretKey is not configured.");
+builder.Services.AddHttpClient<IClerkService, ClerkService>(client =>
+{
+    client.BaseAddress = new Uri("https://api.clerk.com/v1/");
+    client.DefaultRequestHeaders.Authorization =
+        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", clerkSecretKey);
+});
 
 // CORS — allow Next.js frontend
 builder.Services.AddCors(options =>

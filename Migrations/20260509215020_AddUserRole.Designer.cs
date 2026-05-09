@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SceneBuilderApi.Data;
 
@@ -11,9 +12,11 @@ using SceneBuilderApi.Data;
 namespace SceneBuilderApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260509215020_AddUserRole")]
+    partial class AddUserRole
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -40,35 +43,6 @@ namespace SceneBuilderApi.Migrations
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("int");
 
-                    b.Property<int>("StoryId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StoryId");
-
-                    b.ToTable("Scenes");
-                });
-
-            modelBuilder.Entity("SceneBuilderApi.Models.Story", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -85,7 +59,7 @@ namespace SceneBuilderApi.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Stories");
+                    b.ToTable("Scenes");
                 });
 
             modelBuilder.Entity("SceneBuilderApi.Models.User", b =>
@@ -120,19 +94,8 @@ namespace SceneBuilderApi.Migrations
 
             modelBuilder.Entity("SceneBuilderApi.Models.Scene", b =>
                 {
-                    b.HasOne("SceneBuilderApi.Models.Story", "Story")
-                        .WithMany("Scenes")
-                        .HasForeignKey("StoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Story");
-                });
-
-            modelBuilder.Entity("SceneBuilderApi.Models.Story", b =>
-                {
                     b.HasOne("SceneBuilderApi.Models.User", "User")
-                        .WithMany("Stories")
+                        .WithMany("Scenes")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -140,14 +103,9 @@ namespace SceneBuilderApi.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("SceneBuilderApi.Models.Story", b =>
-                {
-                    b.Navigation("Scenes");
-                });
-
             modelBuilder.Entity("SceneBuilderApi.Models.User", b =>
                 {
-                    b.Navigation("Stories");
+                    b.Navigation("Scenes");
                 });
 #pragma warning restore 612, 618
         }
