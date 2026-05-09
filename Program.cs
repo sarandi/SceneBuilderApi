@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SceneBuilderApi.Data;
-using System.Text;
 using SceneBuilderApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,23 +41,23 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("Jwt:Key is not configured.");
+// Clerk JWT Authentication
+var clerkDomain = builder.Configuration["Clerk:Domain"]
+    ?? throw new InvalidOperationException("Clerk:Domain is not configured.");
+var issuer = $"https://{clerkDomain}";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.Authority = issuer;
+        options.RequireHttpsMetadata = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidateAudience = true,
+            ValidIssuer = issuer,
+            ValidateAudience = false,
             ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtKey))
+            ValidateIssuerSigningKey = true
         };
     });
 

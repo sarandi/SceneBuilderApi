@@ -12,8 +12,8 @@ using SceneBuilderApi.Data;
 namespace SceneBuilderApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260509024437_AddDisplayOrder")]
-    partial class AddDisplayOrder
+    [Migration("20260509193123_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -51,8 +51,9 @@ namespace SceneBuilderApi.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
 
@@ -63,11 +64,8 @@ namespace SceneBuilderApi.Migrations
 
             modelBuilder.Entity("SceneBuilderApi.Models.User", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");

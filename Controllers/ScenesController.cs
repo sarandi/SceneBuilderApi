@@ -8,125 +8,117 @@ using System.Security.Claims;
 namespace SceneBuilderApi.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/scenes")]
 [Authorize]
-public class ScenesController : ControllerBase
+public class ScenesController(AppDbContext context) : ControllerBase
 {
-    private readonly AppDbContext _db;
-
-    public ScenesController(AppDbContext db)
-    {
-        _db = db;
-    }
-
-    private int GetUserId() =>
-        int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue("sub")
-            ?? throw new InvalidOperationException("User ID not found in token."));
+    private string GetClerkUserId() =>
+        User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+        ?? User.FindFirst("sub")?.Value
+        ?? throw new UnauthorizedAccessException("User ID not found in token");
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetScenes()
     {
-        var userId = GetUserId();
-        var scenes = await _db.Scenes
+        var userId = GetClerkUserId();
+        var scenes = await context.Scenes
             .Where(s => s.UserId == userId)
             .OrderBy(s => s.DisplayOrder)
-            .ThenByDescending(s => s.UpdatedAt)
-            .Select(s => new
+            .Select(s => new SceneSummary
             {
-                s.Id,
-                s.Title,
-                s.DisplayOrder,
-                s.CreatedAt,
-                s.UpdatedAt,
+                Id = s.Id,
+                Title = s.Title,
+                DisplayOrder = s.DisplayOrder,
+                CreatedAt = s.CreatedAt,
+                UpdatedAt = s.UpdatedAt
             })
             .ToListAsync();
-
         return Ok(scenes);
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<IActionResult> GetScene(int id)
     {
-        var userId = GetUserId();
-        var scene = await _db.Scenes
+        var userId = GetClerkUserId();
+        var scene = await context.Scenes
             .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
-
         if (scene == null) return NotFound();
-        return Ok(scene);
+        return Ok(ToFull(scene));
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] SceneRequest request)
+    public async Task<IActionResult> SaveScene([FromBody] SaveSceneRequest request)
     {
-        var userId = GetUserId();
-        var maxOrder = await _db.Scenes
+        var userId = GetClerkUserId();
+        var nextOrder = (await context.Scenes
             .Where(s => s.UserId == userId)
-            .MaxAsync(s => (int?)s.DisplayOrder) ?? 0;
+            .MaxAsync(s => (int?)s.DisplayOrder) ?? 0) + 1;
 
         var scene = new Scene
         {
-            UserId = userId,
             Title = request.Title,
             Content = request.Content,
-            DisplayOrder = maxOrder + 1,
+            UserId = userId,
+            DisplayOrder = nextOrder,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
-
-        _db.Scenes.Add(scene);
-        await _db.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetById), new { id = scene.Id }, scene);
+        context.Scenes.Add(scene);
+        await context.SaveChangesAsync();
+        return Ok(ToFull(scene));
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] SceneRequest request)
+    public async Task<IActionResult> UpdateScene(int id, [FromBody] UpdateSceneRequest request)
     {
-        var userId = GetUserId();
-        var scene = await _db.Scenes
-            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
-
+        var userId = GetClerkUserId();
+        var scene = await context.Scenes.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
         if (scene == null) return NotFound();
-
         scene.Title = request.Title;
         scene.Content = request.Content;
         scene.UpdatedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
-        return Ok(scene);
+        await context.SaveChangesAsync();
+        return Ok(ToFull(scene));
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> DeleteScene(int id)
     {
-        var userId = GetUserId();
-        var scene = await _db.Scenes
-            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
-
+        var userId = GetClerkUserId();
+        var scene = await context.Scenes.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
         if (scene == null) return NotFound();
-
-        _db.Scenes.Remove(scene);
-        await _db.SaveChangesAsync();
+        context.Scenes.Remove(scene);
+        await context.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpPut("reorder")]
-    public async Task<IActionResult> Reorder([FromBody] ReorderRequest request)
+    public async Task<IActionResult> ReorderScenes([FromBody] ReorderRequest request)
     {
-        var userId = GetUserId();
-        var scenes = await _db.Scenes
-            .Where(s => s.UserId == userId)
-            .ToListAsync();
-
-        for (int i = 0; i < request.OrderedIds.Count; i++)
+        var userId = GetClerkUserId();
+        var scenes = await context.Scenes.Where(s => s.UserId == userId).ToListAsync();
+        for (int i = 0; i < request.OrderedIds.Length; i++)
         {
             var scene = scenes.FirstOrDefault(s => s.Id == request.OrderedIds[i]);
-            if (scene != null) scene.DisplayOrder = i;
+            if (scene is not null) scene.DisplayOrder = i + 1;
         }
-
-        await _db.SaveChangesAsync();
+        await context.SaveChangesAsync();
         return NoContent();
     }
+
+    private static SceneFull ToFull(Scene s) => new()
+    {
+        Id = s.Id,
+        Title = s.Title,
+        Content = s.Content,
+        DisplayOrder = s.DisplayOrder,
+        CreatedAt = s.CreatedAt,
+        UpdatedAt = s.UpdatedAt
+    };
 }
 
-public record SceneRequest(string Title, string Content);
-public record ReorderRequest(List<int> OrderedIds);
+public class SaveSceneRequest { public string Title { get; set; } = null!; public string Content { get; set; } = null!; }
+public class UpdateSceneRequest { public string Title { get; set; } = null!; public string Content { get; set; } = null!; }
+public class ReorderRequest { public int[] OrderedIds { get; set; } = null!; }
+public class SceneSummary { public int Id { get; set; } public string Title { get; set; } = null!; public int DisplayOrder { get; set; } public DateTime CreatedAt { get; set; } public DateTime UpdatedAt { get; set; } }
+public class SceneFull : SceneSummary { public string Content { get; set; } = null!; }

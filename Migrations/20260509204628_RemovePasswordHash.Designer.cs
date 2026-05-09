@@ -12,8 +12,8 @@ using SceneBuilderApi.Data;
 namespace SceneBuilderApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260508234637_Init")]
-    partial class Init
+    [Migration("20260509204628_RemovePasswordHash")]
+    partial class RemovePasswordHash
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -40,6 +40,9 @@ namespace SceneBuilderApi.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -48,8 +51,9 @@ namespace SceneBuilderApi.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
 
@@ -60,11 +64,8 @@ namespace SceneBuilderApi.Migrations
 
             modelBuilder.Entity("SceneBuilderApi.Models.User", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -78,10 +79,6 @@ namespace SceneBuilderApi.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 

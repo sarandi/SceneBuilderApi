@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace SceneBuilderApi.Migrations
 {
     /// <inheritdoc />
-    public partial class Init : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,8 +15,7 @@ namespace SceneBuilderApi.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     DisplayName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -33,9 +32,10 @@ namespace SceneBuilderApi.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
