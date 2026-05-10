@@ -8,4 +8,7 @@ public class User
     public string? Role { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public ICollection<Story> Stories { get; set; } = new List<Story>();
+    public ICollection<Universe> Universes { get; set; } = new List<Universe>();
+    public ICollection<Entity> Entities { get; set; } = new List<Entity>();
+    public ICollection<Calendar> Calendars { get; set; } = new List<Calendar>();
 }
