@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SceneBuilderApi.Data;
 
@@ -11,9 +12,11 @@ using SceneBuilderApi.Data;
 namespace SceneBuilderApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260510054110_AddSceneUniverse")]
+    partial class AddSceneUniverse
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -477,6 +480,9 @@ namespace SceneBuilderApi.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int?>("UniverseId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -484,22 +490,9 @@ namespace SceneBuilderApi.Migrations
 
                     b.HasIndex("StoryId");
 
-                    b.ToTable("Scenes");
-                });
-
-            modelBuilder.Entity("SceneBuilderApi.Models.SceneUniverse", b =>
-                {
-                    b.Property<int>("SceneId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UniverseId")
-                        .HasColumnType("int");
-
-                    b.HasKey("SceneId", "UniverseId");
-
                     b.HasIndex("UniverseId");
 
-                    b.ToTable("SceneUniverses");
+                    b.ToTable("Scenes");
                 });
 
             modelBuilder.Entity("SceneBuilderApi.Models.Story", b =>
@@ -518,6 +511,9 @@ namespace SceneBuilderApi.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int?>("UniverseId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -527,24 +523,11 @@ namespace SceneBuilderApi.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("UniverseId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Stories");
-                });
-
-            modelBuilder.Entity("SceneBuilderApi.Models.StoryUniverse", b =>
-                {
-                    b.Property<int>("StoryId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UniverseId")
-                        .HasColumnType("int");
-
-                    b.HasKey("StoryId", "UniverseId");
-
-                    b.HasIndex("UniverseId");
-
-                    b.ToTable("StoryUniverses");
                 });
 
             modelBuilder.Entity("SceneBuilderApi.Models.Universe", b =>
@@ -813,56 +796,31 @@ namespace SceneBuilderApi.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Story");
-                });
-
-            modelBuilder.Entity("SceneBuilderApi.Models.SceneUniverse", b =>
-                {
-                    b.HasOne("SceneBuilderApi.Models.Scene", "Scene")
-                        .WithMany("SceneUniverses")
-                        .HasForeignKey("SceneId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("SceneBuilderApi.Models.Universe", "Universe")
-                        .WithMany("SceneUniverses")
-                        .HasForeignKey("UniverseId")
-                        .OnDelete(DeleteBehavior.ClientCascade)
-                        .IsRequired();
+                        .WithMany()
+                        .HasForeignKey("UniverseId");
 
-                    b.Navigation("Scene");
+                    b.Navigation("Story");
 
                     b.Navigation("Universe");
                 });
 
             modelBuilder.Entity("SceneBuilderApi.Models.Story", b =>
                 {
+                    b.HasOne("SceneBuilderApi.Models.Universe", "Universe")
+                        .WithMany("Stories")
+                        .HasForeignKey("UniverseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SceneBuilderApi.Models.User", "User")
                         .WithMany("Stories")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("SceneBuilderApi.Models.StoryUniverse", b =>
-                {
-                    b.HasOne("SceneBuilderApi.Models.Story", "Story")
-                        .WithMany("StoryUniverses")
-                        .HasForeignKey("StoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("SceneBuilderApi.Models.Universe", "Universe")
-                        .WithMany("StoryUniverses")
-                        .HasForeignKey("UniverseId")
-                        .OnDelete(DeleteBehavior.ClientCascade)
-                        .IsRequired();
-
-                    b.Navigation("Story");
-
                     b.Navigation("Universe");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SceneBuilderApi.Models.Universe", b =>
@@ -913,16 +871,9 @@ namespace SceneBuilderApi.Migrations
                     b.Navigation("Relationships");
                 });
 
-            modelBuilder.Entity("SceneBuilderApi.Models.Scene", b =>
-                {
-                    b.Navigation("SceneUniverses");
-                });
-
             modelBuilder.Entity("SceneBuilderApi.Models.Story", b =>
                 {
                     b.Navigation("Scenes");
-
-                    b.Navigation("StoryUniverses");
                 });
 
             modelBuilder.Entity("SceneBuilderApi.Models.Universe", b =>
@@ -931,9 +882,7 @@ namespace SceneBuilderApi.Migrations
 
                     b.Navigation("Entities");
 
-                    b.Navigation("SceneUniverses");
-
-                    b.Navigation("StoryUniverses");
+                    b.Navigation("Stories");
                 });
 
             modelBuilder.Entity("SceneBuilderApi.Models.User", b =>

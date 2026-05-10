@@ -10,4 +10,5 @@ public class Scene
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public Story Story { get; set; } = null!;
+    public ICollection<SceneUniverse> SceneUniverses { get; set; } = new List<SceneUniverse>();
 }

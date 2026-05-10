@@ -28,6 +28,8 @@ public class StoriesController(AppDbContext context) : ControllerBase
             {
                 Id = s.Id,
                 Title = s.Title,
+                UniverseIds = s.StoryUniverses.Select(su => su.UniverseId).ToList(),
+                UniverseNames = s.StoryUniverses.Select(su => su.Universe.Name).ToList(),
                 SceneCount = s.Scenes.Count(),
                 CreatedAt = s.CreatedAt,
                 UpdatedAt = s.UpdatedAt
@@ -42,7 +44,16 @@ public class StoriesController(AppDbContext context) : ControllerBase
         var userId = GetClerkUserId();
         var story = await context.Stories
             .Where(s => s.Id == id && s.UserId == userId)
-            .Select(s => new StoryDto { Id = s.Id, Title = s.Title, SceneCount = s.Scenes.Count(), CreatedAt = s.CreatedAt, UpdatedAt = s.UpdatedAt })
+            .Select(s => new StoryDto
+            {
+                Id = s.Id,
+                Title = s.Title,
+                UniverseIds = s.StoryUniverses.Select(su => su.UniverseId).ToList(),
+                UniverseNames = s.StoryUniverses.Select(su => su.Universe.Name).ToList(),
+                SceneCount = s.Scenes.Count(),
+                CreatedAt = s.CreatedAt,
+                UpdatedAt = s.UpdatedAt
+            })
             .FirstOrDefaultAsync();
         if (story == null) return NotFound();
         return Ok(story);
@@ -61,7 +72,19 @@ public class StoriesController(AppDbContext context) : ControllerBase
         };
         context.Stories.Add(story);
         await context.SaveChangesAsync();
-        return Ok(new StoryDto { Id = story.Id, Title = story.Title, SceneCount = 0, CreatedAt = story.CreatedAt, UpdatedAt = story.UpdatedAt });
+
+        foreach (var uid in request.UniverseIds)
+            context.StoryUniverses.Add(new StoryUniverse { StoryId = story.Id, UniverseId = uid });
+        if (request.UniverseIds.Count > 0)
+            await context.SaveChangesAsync();
+
+        return Ok(new StoryDto
+        {
+            Id = story.Id, Title = story.Title,
+            UniverseIds = request.UniverseIds,
+            UniverseNames = new(),
+            SceneCount = 0, CreatedAt = story.CreatedAt, UpdatedAt = story.UpdatedAt
+        });
     }
 
     [HttpPut("{id}")]
@@ -70,10 +93,29 @@ public class StoriesController(AppDbContext context) : ControllerBase
         var userId = GetClerkUserId();
         var story = await context.Stories.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
         if (story == null) return NotFound();
+
         story.Title = request.Title;
         story.UpdatedAt = DateTime.UtcNow;
+
+        var existing = await context.StoryUniverses.Where(su => su.StoryId == id).ToListAsync();
+        context.StoryUniverses.RemoveRange(existing);
+        foreach (var uid in request.UniverseIds)
+            context.StoryUniverses.Add(new StoryUniverse { StoryId = id, UniverseId = uid });
+
         await context.SaveChangesAsync();
-        return Ok(new StoryDto { Id = story.Id, Title = story.Title, SceneCount = story.Scenes.Count, CreatedAt = story.CreatedAt, UpdatedAt = story.UpdatedAt });
+
+        var universeNames = await context.Universes
+            .Where(u => request.UniverseIds.Contains(u.Id))
+            .Select(u => u.Name)
+            .ToListAsync();
+
+        return Ok(new StoryDto
+        {
+            Id = story.Id, Title = story.Title,
+            UniverseIds = request.UniverseIds,
+            UniverseNames = universeNames,
+            SceneCount = story.Scenes.Count, CreatedAt = story.CreatedAt, UpdatedAt = story.UpdatedAt
+        });
     }
 
     [HttpDelete("{id}")]
@@ -88,11 +130,17 @@ public class StoriesController(AppDbContext context) : ControllerBase
     }
 }
 
-public class StoryRequest { public string Title { get; set; } = null!; }
+public class StoryRequest
+{
+    public string Title { get; set; } = null!;
+    public List<int> UniverseIds { get; set; } = new();
+}
 public class StoryDto
 {
     public int Id { get; set; }
     public string Title { get; set; } = null!;
+    public List<int> UniverseIds { get; set; } = new();
+    public List<string> UniverseNames { get; set; } = new();
     public int SceneCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

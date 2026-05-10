@@ -95,11 +95,13 @@ builder.Services.AddHttpClient<IClerkService, ClerkService>(client =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
-        policy.WithOrigins(
-                builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:3000")
+    {
+        var origins = (builder.Configuration["Cors:AllowedOrigins"] ?? "http://localhost:3000")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        policy.WithOrigins(origins)
               .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials());
+              .AllowAnyHeader();
+    });
 });
 
 var app = builder.Build();
@@ -110,7 +112,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment()) app.UseHttpsRedirection();
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();

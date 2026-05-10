@@ -18,6 +18,8 @@ public class AppDbContext : DbContext
     public DbSet<EntityFieldRefValue> EntityFieldRefValues => Set<EntityFieldRefValue>();
     public DbSet<RelationshipType> RelationshipTypes => Set<RelationshipType>();
     public DbSet<EntityRelationship> EntityRelationships => Set<EntityRelationship>();
+    public DbSet<StoryUniverse> StoryUniverses => Set<StoryUniverse>();
+    public DbSet<SceneUniverse> SceneUniverses => Set<SceneUniverse>();
     public DbSet<Calendar> Calendars => Set<Calendar>();
     public DbSet<CalendarUnit> CalendarUnits => Set<CalendarUnit>();
     public DbSet<CalendarEra> CalendarEras => Set<CalendarEra>();
@@ -52,10 +54,19 @@ public class AppDbContext : DbContext
              .WithMany(u => u.Stories)
              .HasForeignKey(s => s.UserId)
              .OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(s => s.Universe)
-             .WithMany(u => u.Stories)
-             .HasForeignKey(s => s.UniverseId)
-             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<StoryUniverse>(e =>
+        {
+            e.HasKey(su => new { su.StoryId, su.UniverseId });
+            e.HasOne(su => su.Story)
+             .WithMany(s => s.StoryUniverses)
+             .HasForeignKey(su => su.StoryId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(su => su.Universe)
+             .WithMany(u => u.StoryUniverses)
+             .HasForeignKey(su => su.UniverseId)
+             .OnDelete(DeleteBehavior.ClientCascade);
         });
 
         modelBuilder.Entity<Scene>(e =>
@@ -67,6 +78,19 @@ public class AppDbContext : DbContext
              .WithMany(s => s.Scenes)
              .HasForeignKey(s => s.StoryId)
              .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SceneUniverse>(e =>
+        {
+            e.HasKey(su => new { su.SceneId, su.UniverseId });
+            e.HasOne(su => su.Scene)
+             .WithMany(s => s.SceneUniverses)
+             .HasForeignKey(su => su.SceneId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(su => su.Universe)
+             .WithMany(u => u.SceneUniverses)
+             .HasForeignKey(su => su.UniverseId)
+             .OnDelete(DeleteBehavior.ClientCascade);
         });
 
         modelBuilder.Entity<EntityType>(e =>

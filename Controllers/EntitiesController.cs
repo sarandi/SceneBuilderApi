@@ -46,6 +46,10 @@ public class EntitiesController(AppDbContext context) : ControllerBase
                 IsPublic = e.IsPublic,
                 IsSecret = e.IsSecret,
                 UpdatedAt = e.UpdatedAt,
+                Aliases = e.FieldValues
+                    .Where(v => v.Field.Key == "aliases" && v.TextValue != null)
+                    .Select(v => v.TextValue)
+                    .FirstOrDefault(),
             })
             .ToListAsync();
 
@@ -225,6 +229,7 @@ public class EntitySummaryDto
     public bool IsPublic { get; set; }
     public bool IsSecret { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public string? Aliases { get; set; }
 }
 
 public class EntityDetailDto : EntitySummaryDto
