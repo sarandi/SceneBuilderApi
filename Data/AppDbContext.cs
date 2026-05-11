@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<CalendarUnit> CalendarUnits => Set<CalendarUnit>();
     public DbSet<CalendarEra> CalendarEras => Set<CalendarEra>();
     public DbSet<CalendarSpecialDate> CalendarSpecialDates => Set<CalendarSpecialDate>();
+    public DbSet<SceneNote> SceneNotes => Set<SceneNote>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -249,6 +250,21 @@ public class AppDbContext : DbContext
              .WithMany(c => c.SpecialDates)
              .HasForeignKey(d => d.CalendarId)
              .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SceneNote>(e =>
+        {
+            e.HasKey(n => n.Id);
+            e.Property(n => n.Title).HasMaxLength(200);
+            e.Property(n => n.Content).HasColumnType("nvarchar(max)");
+            e.HasOne(n => n.Scene)
+             .WithMany()
+             .HasForeignKey(n => n.SceneId)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(n => n.User)
+             .WithMany()
+             .HasForeignKey(n => n.UserId)
+             .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
